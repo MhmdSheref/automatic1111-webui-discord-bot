@@ -1,7 +1,14 @@
+import os
 import requests
 import json
 import base64
 import enum
+from modes import modes_list
+
+os.chdir(os.path.dirname(__file__))
+
+index_file = open("index.txt", "r+")
+index = int(index_file.readline(-1))
 
 TXT2IMG_URL = "http://localhost:7860/sdapi/v1/txt2img"
 
@@ -40,7 +47,6 @@ for i, sample in enumerate(SAMPLERS):
 sampler_list = enum.Enum("sampler_list", sampler_list)
 
 
-
 Modes = enum.Enum("Modes", list(modes_list.keys()) + ["base"])
 
 PARAMS = {
@@ -58,6 +64,7 @@ PARAMS = {
     },
     "override_settings_restore_afterwards": False,
 }
+
 
 def apply_params(params, is_default, *args):
     if params.get("pre_prompt") is None:

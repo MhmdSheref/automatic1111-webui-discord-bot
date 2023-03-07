@@ -1,12 +1,8 @@
 import os
 import discord
-
-from modes import modes_list
 from dotenv import load_dotenv
 from sd_link import *
-os.chdir(os.path.dirname(__file__))
-index_file = open("index.txt", "r+")
-index = int(index_file.readline(-1))
+
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
 
@@ -79,7 +75,7 @@ async def generate(interaction: discord.Interaction,
 
 # To sync with the botshard bot
 @tree.command(name="chat", description="Talk to chatGPT.")
-async def chat(interaction, message: str):
+async def chat(interaction, message: str, clear: bool = False):
     pass
 
 
