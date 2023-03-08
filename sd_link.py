@@ -12,6 +12,8 @@ index = int(index_file.readline(-1))
 
 TXT2IMG_URL = "http://localhost:7860/sdapi/v1/txt2img"
 
+PROGRESS_URL = "http://localhost:7860/sdapi/v1/progress"
+
 PNGINFO_URL = "http://localhost:7860/sdapi/v1/png-info"
 
 translate = {
@@ -46,7 +48,6 @@ for i, sample in enumerate(SAMPLERS):
 
 sampler_list = enum.Enum("sampler_list", sampler_list)
 
-
 Modes = enum.Enum("Modes", list(modes_list.keys()) + ["base"])
 
 PARAMS = {
@@ -64,6 +65,8 @@ PARAMS = {
     },
     "override_settings_restore_afterwards": False,
 }
+
+returns = []
 
 
 def apply_params(params, is_default, *args):
@@ -116,12 +119,21 @@ def parse_input(message_txt: str):
     return params
 
 
+def check_progress():
+    return json.loads(requests.get(PROGRESS_URL).content)["progress"]
+
+
 def make_image(params):
-    global index, index_file
+    global index, index_file, returns
     index += 1
-    created_image = requests.post(url=TXT2IMG_URL, data=json.dumps(params)).content
-    created_image = json.loads(created_image)
-    created_image = created_image["images"][0]
+    try:
+        created_image = requests.post(url=TXT2IMG_URL, data=json.dumps(params)).content
+        created_image = json.loads(created_image)
+        created_image = created_image["images"][0]
+    except Exception as e:
+        print(e)
+        returns = ["Error", e]
+        return
     image_data = requests.post(url=PNGINFO_URL, data=json.dumps({"image": created_image})).content
     image_data = json.loads(image_data)["info"]
     created_image = base64.b64decode(created_image)
@@ -130,4 +142,5 @@ def make_image(params):
     index_file.seek(0)
     index_file.write(str(index))
     index_file.truncate()
-    return f"images/image{index}.png", image_data
+    returns = [f"images/image{index}.png", image_data]
+

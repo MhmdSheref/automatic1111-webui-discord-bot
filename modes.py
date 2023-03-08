@@ -38,7 +38,7 @@ modes_list = {
         "clip_skip": 2,
     },
 
-    "illustration": {
+    "midjourney": {
         "prompt_prefix": ["masterpiece, highly detailed illustration, ", ", made by midjourney"],
         "negative_prompt": "bad quality, low quality, out of frame, duplicate, watermark, signature, text, bokeh",
         "steps": 20,
@@ -51,7 +51,7 @@ modes_list = {
         "clip_skip": 2,
     },
 
-    "dark": {
+    "illustrationV2": {
         "prompt_prefix": ["", ""],
         "negative_prompt": "nartfixer nfixer nrealfixer",
         "steps": 20,
