@@ -1,5 +1,6 @@
-import discord
+import asyncio
 import time
+import discord
 import os
 import threading
 from dotenv import load_dotenv
@@ -30,8 +31,7 @@ I dont have any checks to actually see if your values break anything so please b
 intents = discord.Intents.all()
 client = discord.Client(intents=intents)
 tree = discord.app_commands.CommandTree(client)
-
-
+lock = asyncio.Lock()
 @client.event
 async def on_ready():
     # await tree.sync()
@@ -60,42 +60,51 @@ async def generate(interaction: discord.Interaction,
                    sd_model: sd.model_list = None,
                    clip_skip: int = None,
                    ):
-    
-    # await interaction.response.defer()
-    await interaction.followup.send("Your command is being processed by the server...")
-    params = sd.PARAMS.copy()
-    if mode.name != "base":
-        params = sd.apply_params(params, True, *sd.modes_list[mode.name].values())
-    params = sd.apply_params(params, False, prompt, negative_prompt, steps, sampler.name if sampler is not None else None, cfg_scale, seed, width, height, sd_model.name if sd_model is not None else None, clip_skip)
-    print(f"Generating an image for user {interaction.user} using slash...")
-    sd_thread = threading.Thread(target=sd.make_image, args=(params,))
-    sd_thread.start()
-    while not sd.returns:
-        progress = int(sd.check_progress() * 100)
-        if progress == 0:
-            await interaction.edit_original_response(content=progress_bar.bar(100) + " Uploading... ")
-            break
-        elif progress == 1:
-            await interaction.edit_original_response(content=progress_bar.bar(0) + " Initializing model...")
-        else:
-            await interaction.edit_original_response(content=progress_bar.bar(progress) + " " + str(progress) + "%")
-        time.sleep(0.1)
-    sd_thread.join()
-    [image, info] = sd.returns
-    sd.returns = []
-    # print(main.join())
-    # except Exception as e:
-    #     await interaction.edit_original_response(content="There was an error with your request, please try again...")
-    #     print(e)
+    await interaction.followup.send("Your image is in queue...")
+    global lock
+    async with lock:
+        await interaction.edit_original_response(content="Your image is being processed by the server...")
+        params = sd.PARAMS.copy()
+        if mode.name != "base":
+            params = sd.apply_params(params, True, *sd.modes_list[mode.name].values())
+        params = sd.apply_params(params, False, prompt, negative_prompt, steps, sampler.name if sampler is not None else None, cfg_scale, seed, width, height, sd_model.name if sd_model is not None else None, clip_skip)
+        print(f"Generating an image for user {interaction.user} using slash...")
+        sd_thread = threading.Thread(target=sd.make_image, args=(params,))
+        sd_thread.start()
+        while not sd.returns:
+            time.sleep(0.1)
+            progress = int(sd.check_progress() * 100)
+            if progress == 0:
+                await interaction.edit_original_response(content=progress_bar.bar(100) + " Uploading... ")
+                break
+            elif progress == 1:
+                await interaction.edit_original_response(content=progress_bar.bar(0) + " Initializing model...")
+            else:
+                await interaction.edit_original_response(content=progress_bar.bar(progress) + " " + str(progress) + "%")
+        sd_thread.join()
+        [image, info] = sd.returns
+        sd.returns = []
+
     if image == "Error":
         await interaction.edit_original_response(content="There was an error with your request, please try again...")
         return
     await interaction.edit_original_response(content=info, attachments=[discord.File(image)])
 
 
-# To sync with the botshard bot
+@tree.command(name="kill", description="ADMIN ONLY")
+async def kill(interaction: discord.Interaction):
+    await interaction.response.defer()
+
+    if interaction.user.id == 324519572806041600:
+        await interaction.followup.send("The bot has been killed")
+        await quit()
+    else:
+        await interaction.followup.send("You dont have access to this command")
+
+
 @tree.command(name="chat", description="Talk to chatGPT.")
 async def chat(interaction, message: str, clear: bool = False):
+    # To sync with the botshard bot
     pass
 
 
@@ -113,5 +122,6 @@ async def on_message(message: discord.Message):
         (image, info) = sd.make_image(params)
         await message.channel.send(info, file=discord.File(image))
         print(f"Generating an image for user {message.author} using prefix...")
+
 
 client.run(TOKEN)
